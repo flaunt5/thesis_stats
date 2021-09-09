@@ -1,4 +1,4 @@
-from tools import seperate_answers_first as saf
+from tools import data
 from stats import cronbach_alpha as ca
 
 first_data = saf.get_first_data("results.csv")
