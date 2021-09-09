@@ -125,3 +125,4 @@ dmypy.json
 
 # own ignores
 *.csv
+!.gitkeep

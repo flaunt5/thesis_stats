@@ -1,6 +1,7 @@
-import pandas
+import pandas as pd
+import numpy as np
 
-data = pandas.read_csv("results.csv").drop(index=[0,1]).reset_index()
+data = pd.read_csv("results.csv").drop(index=[0,1]).reset_index()
 general_data = data[["Duration (in seconds)", "MT", "AR", "GI", "DEVICE_Browser", "DEVICE_Operating System", "DEVICE_Resolution", "EMAIL"]]
 general_data = general_data[general_data.EMAIL.notnull()]
 
@@ -23,3 +24,5 @@ genTime = data[["GI", "Duration (in seconds)"]]
 genTime = genTime.astype({"GI": "string", "Duration (in seconds)": "int32"})
 print(genTime.groupby("GI").mean())
 print(genTime.groupby("GI").median())
+
+
