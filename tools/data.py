@@ -6,6 +6,7 @@ class Data(object):
     gew_data = False
     panas_data = False
     email_name = "EMAIL"
+    id_name = 'ID'
 
     def __init__(self):
         self.gew_data = self.get_gew_data()
@@ -37,8 +38,8 @@ class Data(object):
         gew_data_num = gew_data_num.drop(
             otherCols, axis=1).fillna(0).astype(int)
 
-        gew_data_index = data[['ResponseId', 'Duration (in seconds)', self.email_name]].astype(
-            {'ResponseId': 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
+        gew_data_index = data[[self.id_name, 'Duration (in seconds)', self.email_name]].astype(
+            {self.id_name: 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
 
         gew_data_other = data[otherCols].fillna("").astype(str)
 
@@ -48,8 +49,8 @@ class Data(object):
         panas_data_num = data.iloc[:, slice_1:slice_2].fillna(
             1).apply(pandas.to_numeric)
 
-        panas_data_index = data[['ResponseId', 'Duration (in seconds)', self.email_name]].astype(
-            {'ResponseId': 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
+        panas_data_index = data[[self.id_name, 'Duration (in seconds)', self.email_name]].astype(
+            {self.id_name: 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
 
         return [panas_data_num, panas_data_index]
 
@@ -57,22 +58,31 @@ class Data(object):
         return self.get_gew_data(force)[0]
 
     def get_gew_assoc_data(self, force=False):
-        return self.get_gew_data(force)[1].join(self.gew_data[0])
+        gdat = self.get_gew_data(force)
+        gdat = gdat[1].join(gdat[0])
+        gdat.set_index(self.id_name, inplace=True)
+        return gdat
 
     def get_gew_other_data(self, force=False):
-        return self.get_gew_data(force)[1].join(self.gew_data[2])
+        gdat = self.get_gew_data(force)
+        return gdat[1].join(gdat[2])
 
     def get_panas_num_data(self, force=False):
         return self.get_panas_data(force)[0]
 
     def get_panas_assoc_data(self, force=False):
-        return self.get_panas_data(force)[1].join(self.get_panas_data()[0])
+        pdat = self.get_panas_data(force)
+        pdat = pdat[1].join(pdat[0])
+        pdat.set_index(self.id_name, inplace=True)
+        return pdat
 
 
 class FirstData(Data):
 
     def __init__(self, file):
-        self.data = pandas.read_csv(file).drop(index=[0, 1]).reset_index()
+        fdata = pandas.read_csv(file).drop(index=[0, 1]).reset_index()
+        fdata = fdata.rename({"ResponseId": "ID"}, axis="columns")
+        self.data=fdata
         Data.__init__(self)
 
     def _get_gew_data(self):
@@ -90,6 +100,7 @@ class SecondData(Data):
         self.file_gew = file_gew
         self.file_panas = file_panas
         self.email_name = "RecipientEmail1"
+        self.id_name = "ID"
         Data.__init__(self)
 
     def _get_gew_data(self):
