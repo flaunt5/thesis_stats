@@ -38,8 +38,8 @@ class Data(object):
         gew_data_num = gew_data_num.drop(
             otherCols, axis=1).fillna(0).astype(int)
 
-        gew_data_index = data[[self.id_name, 'Duration (in seconds)', self.email_name]].astype(
-            {self.id_name: 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
+        gew_data_index = data[['Duration (in seconds)', self.email_name]].astype(
+            {'Duration (in seconds)': 'int64', self.email_name: 'string'})
 
         gew_data_other = data[otherCols].fillna("").astype(str)
 
@@ -48,9 +48,8 @@ class Data(object):
     def return_panas_data(self, data, slice_1, slice_2):
         panas_data_num = data.iloc[:, slice_1:slice_2].fillna(
             1).apply(pandas.to_numeric)
-
-        panas_data_index = data[[self.id_name, 'Duration (in seconds)', self.email_name]].astype(
-            {self.id_name: 'string', 'Duration (in seconds)': 'int64', self.email_name: 'string'})
+        panas_data_index = data[['Duration (in seconds)', self.email_name]].astype(
+            {'Duration (in seconds)': 'int64', self.email_name: 'string'})
 
         return [panas_data_num, panas_data_index]
 
@@ -60,7 +59,6 @@ class Data(object):
     def get_gew_assoc_data(self, force=False):
         gdat = self.get_gew_data(force)
         gdat = gdat[1].join(gdat[0])
-        gdat.set_index(self.id_name, inplace=True)
         return gdat
 
     def get_gew_other_data(self, force=False):
@@ -73,7 +71,6 @@ class Data(object):
     def get_panas_assoc_data(self, force=False):
         pdat = self.get_panas_data(force)
         pdat = pdat[1].join(pdat[0])
-        pdat.set_index(self.id_name, inplace=True)
         return pdat
 
 
@@ -82,16 +79,18 @@ class FirstData(Data):
     def __init__(self, file):
         fdata = pandas.read_csv(file).drop(index=[0, 1]).reset_index()
         fdata = fdata.rename({"ResponseId": "ID"}, axis="columns")
-        self.data=fdata
+        fdata.set_index(self.id_name, inplace=True)
+        fdata.sort_index(inplace=True)
+        self.data = fdata
         Data.__init__(self)
 
     def _get_gew_data(self):
         gew_data = self.data[pandas.isna(self.data["Q2.1_1"])]
-        return self.return_gew_data(gew_data, 383, 778)
+        return self.return_gew_data(gew_data, 380, 776)
 
     def _get_panas_data(self):
         panas_data = self.data[pandas.notna(self.data["Q2.1_1"])]
-        return self.return_panas_data(panas_data, 22, 382)
+        return self.return_panas_data(panas_data, 20, 380)
 
 
 class SecondData(Data):
@@ -105,9 +104,13 @@ class SecondData(Data):
 
     def _get_gew_data(self):
         data = pandas.read_csv(self.file_gew).drop(index=[0, 1]).reset_index()
-        return self.return_gew_data(data, 24, 419)
+        data.set_index(self.id_name, inplace=True)
+        data.sort_index(inplace=True)
+        return self.return_gew_data(data, 23, 419)
 
     def _get_panas_data(self):
         data = pandas.read_csv(self.file_panas).drop(
             index=[0, 1]).reset_index()
+        data.set_index(self.id_name, inplace=True)
+        data.sort_index(inplace=True)
         return self.return_panas_data(data, 23, 383)
