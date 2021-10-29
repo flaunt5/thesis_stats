@@ -34,10 +34,9 @@ class Data(object):
         otherCols = ['OTHER1', 'OTHER2', 'OTHER3', 'OTHER4', 'OTHER5', 'OTHER6', 'OTHER7', 'OTHER8', 'OTHER9',
                      'OTHER10', 'OTHER11', 'OTHER12', 'OTHER13', 'OTHER14', 'OTHER15', 'OTHER16', 'OTHER17', 'OTHER18']
 
-        gew_data_num = data.iloc[:, slice_1:slice_2]
-        gew_data_num = gew_data_num.drop(
-            otherCols, axis=1).fillna(0).astype(int)
-
+        gew_data_num = data.iloc[:, slice_1:slice_2].apply(
+            lambda x: pandas.notna(x) if x.name in otherCols else x)
+        gew_data_num = gew_data_num.fillna(0).astype(int)
         gew_data_index = data[['Duration (in seconds)', self.email_name]].astype(
             {'Duration (in seconds)': 'int64', self.email_name: 'string'})
 
