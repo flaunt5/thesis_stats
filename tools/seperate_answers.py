@@ -2,6 +2,8 @@ import numpy
 from data import FirstData, SecondData
 
 
+# helper functions to seperate the data into different CSVs
+
 def write_to_csv(data, filepath):
     numpy.savetxt(filepath,
                   data, delimiter=", ", fmt="% s")

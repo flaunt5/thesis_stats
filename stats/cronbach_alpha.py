@@ -1,7 +1,9 @@
 import pandas as pd
 import numpy as np
 
-def cronbach_alpha(df):
+
+# returns Cronbach's alpha for a given dataframe of results
+def cronbach_alpha(df: pd.DataFrame) -> float:
     df_corr = df.corr()
     N = df.shape[1]
     rs = np.array([])

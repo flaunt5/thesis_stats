@@ -1,6 +1,8 @@
 import pandas
 import numpy
 
+
+# helper script which gathered the different emails to be used in qualtrics to send the follow-up survey
 data = pandas.read_csv("results.csv").drop(index=[0, 1]).reset_index()
 email_data = data[["ResponseId", "EMAIL", "Q2.1_1"]]
 email_data = email_data.astype(
