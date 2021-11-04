@@ -7,6 +7,8 @@ import pandas as pd
 import numpy as np
 import krippendorff as k
 
+transpose = 0
+
 # Fetches the data from the first and second surveys as a data object
 FirstData = data.FirstData("first_results/results.csv")
 SecondData = data.SecondData(
@@ -33,13 +35,23 @@ print(" Second GEW survey results: " + str(k.alpha(numDataGEW[1])))
 print(" First PANAS survey results: " + str(k.alpha(numDataPANAS[0])))
 print(" Second GEW survey results: " + str(k.alpha(numDataPANAS[1])))
 
-corrGEW = cr.get_correlation(numDataGEW[0], numDataGEW[1])
-corrPANAS = cr.get_correlation(numDataPANAS[0], numDataPANAS[1])
+corrGEW = cr.get_correlation(numDataGEW[0], numDataGEW[1], transpose)
+corrPANAS = cr.get_correlation(numDataPANAS[0], numDataPANAS[1], transpose)
+lossGEW = cr.loss_calc(corrGEW[1], corrGEW[0])
+lossPANAS = cr.loss_calc(corrPANAS[1], corrPANAS[0])
+
+print("\n#Correlations calculated with the following data losses:")
+print(" GEW: loss of " +
+      str(lossGEW[0]) + " datapoints out of " + str(lossGEW[1]) +", corresponding to " + str(lossGEW[2]) + " %")
+print(" PANAS: loss of " +
+      str(lossPANAS[0]) + " datapoints out of " + str(lossPANAS[1]) + ", corresponding to " + str(lossPANAS[2]) + "%")
+corrGEW = corrGEW[0]
+corrPANAS = corrPANAS[0]
 corrGEW_n = len(corrGEW)
 corrPANAS_n = len(corrPANAS)
 
 print("\n#Independent T test of GEW correlations against PANAS:\n   " +
-      str(sc.ttest_ind(corrGEW.apply(cr.inf_to_real), corrPANAS.apply(cr.inf_to_real), nan_policy='omit', equal_var=sc.tvar(corrGEW) == sc.tvar(corrPANAS))))
+      str(sc.ttest_ind(corrGEW, corrPANAS, equal_var=sc.tvar(corrGEW) == sc.tvar(corrPANAS), trim=0.2)))
 
 stdGEW = float(np.nanstd(corrGEW, ddof=1))
 stdPANAS = float(np.nanstd(corrPANAS, ddof=1))
@@ -58,19 +70,21 @@ intervalGEW = sc.t.interval(
 intervalPANAS = sc.t.interval(
     alpha=0.95, df=corrPANAS_n-1, loc=np.mean(corrPANAS.apply(cr.inf_to_real)), scale=semPANAS)
 
-print(intervalGEW)
-print(intervalPANAS)
-
 avgGEW = cr.get_average_corr(corrGEW)
 avgPANAS = cr.get_average_corr(corrPANAS)
 
 print("\n#Average correlation for:")
-print(" GEW results: " + str(avgGEW.real + avgPANAS.imag))
-print(" PANAS results: " + str(avgPANAS.real + avgPANAS.imag))
+print(" GEW results: " + str(avgGEW.real + avgPANAS.imag) +
+      ", confidence interval: " + str(intervalGEW))
+print(" PANAS results: " + str(avgPANAS.real + avgPANAS.imag) +
+      ", confidence interval: " + str(intervalPANAS))
 
-cocorr = cr.independent_correlation_test(corrGEW.mean(), corrPANAS.mean(), corrGEW_n, corrPANAS_n)
+cocorr = cr.independent_correlation_test(
+    corrGEW.mean(), corrPANAS.mean(), corrGEW_n, corrPANAS_n)
 
-print(cocorr)
+print("\nSignificance test on the average correlations for GEW and PANAS:")
+print(" t-statistic: " + str(cocorr) +
+      " p-value: " + str(sc.norm.sf(abs(cocorr))*2))
 
 
 # previously used to visualize answers in an excel sheet
