@@ -1,7 +1,10 @@
 import pandas as pd
 import numpy as np
 import scipy.stats as sc
+import plotly.graph_objects as go
 
+
+pd.options.plotting.backend = "plotly"
 
 def get_data():
     MTcorrespondence = {3: "Yes", 4: "No", 5: "Prefer not to say"}
@@ -21,6 +24,13 @@ def get_data():
         {"MT": MTcorrespondence, "AR": ARcorrespondence, "GI": GIcorrespondence}).astype({"MT": "string", "AR": "string", "GI": "string"})
     return general_data
 
+def ttest_duration_per_method(dataset):
+    gew_data = dataset[dataset["method"] == "GEW"]
+    gew_data = gew_data["Duration (in seconds)"].tolist()
+    panas_data = dataset[dataset["method"] == "PANAS"]
+    panas_data = panas_data["Duration (in seconds)"].tolist()
+    return sc.ttest_ind(gew_data, panas_data, equal_var=False)
+
 
 def duration_mean_spearman(dataset, column):
     data = dataset[[column, "Duration (in seconds)"]]
@@ -29,24 +39,28 @@ def duration_mean_spearman(dataset, column):
                          data['Duration (in seconds)'].tolist())
     return [mean, spear]
 
-
-def get_data_categories(dataset):
-    ar = duration_mean_spearman(dataset, "AR")
-    mt = duration_mean_spearman(dataset, "MT")
-    gi = duration_mean_spearman(dataset, "GI")
-    return {"AR": ar, "MT": mt, "GI": gi}
+def point_biserial(dataset, column="method"):
+    data = dataset[[column, "Duration (in seconds)"]]
+    data[column] = data[column].apply(lambda x: True if (x == "GEW" or x == "Yes") else False)
+    return sc.pointbiserialr(data[column], data["Duration (in seconds)"])
 
 
-# general_data = get_data()
-# per_method = duration_mean_spearman(general_data, "method")
-# print(per_method)
-# general_cat = get_data_categories(general_data)
-# print(general_cat)
+general_data = get_data()
+gew_data = general_data[general_data["method"] == "GEW"]
+panas_data = general_data[general_data["method"] == "PANAS"]
 
-# gew_data = general_data[general_data["method"] == "GEW"]
-# gew_cat = get_data_categories(gew_data)
-# print(gew_cat)
+shapiro = sc.shapiro(general_data['Duration (in seconds)'].tolist())
 
-# panas_data = general_data[general_data["method"] == "PANAS"]
-# panas_cat = get_data_categories(panas_data)
-# print(panas_cat)
+test = sc.kruskal(*[group["Duration (in seconds)"].values for name,
+                  group in general_data[["method", "Duration (in seconds)"]].groupby("method")])
+
+
+print(test)
+
+print(ttest_duration_per_method(general_data))
+
+print(point_biserial(general_data))
+print(point_biserial(general_data, "MT"))
+
+
+
