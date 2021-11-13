@@ -24,6 +24,7 @@ def get_data():
         {"MT": MTcorrespondence, "AR": ARcorrespondence, "GI": GIcorrespondence}).astype({"MT": "string", "AR": "string", "GI": "string"})
     return general_data
 
+
 def ttest_duration_per_method(dataset):
     gew_data = dataset[dataset["method"] == "GEW"]
     gew_data = gew_data["Duration (in seconds)"].tolist()
@@ -39,9 +40,11 @@ def duration_mean_spearman(dataset, column):
                          data['Duration (in seconds)'].tolist())
     return [mean, spear]
 
+
 def point_biserial(dataset, column="method"):
     data = dataset[[column, "Duration (in seconds)"]]
-    data[column] = data[column].apply(lambda x: True if (x == "GEW" or x == "Yes") else False)
+    data[column] = data[column].apply(
+        lambda x: True if (x == "GEW" or x == "Yes") else False)
     return sc.pointbiserialr(data[column], data["Duration (in seconds)"])
 
 
@@ -61,6 +64,3 @@ print(ttest_duration_per_method(general_data))
 
 print(point_biserial(general_data))
 print(point_biserial(general_data, "MT"))
-
-
-
