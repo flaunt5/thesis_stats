@@ -2,10 +2,12 @@ from tools import data
 from stats import cronbach_alpha as ca
 from stats import correlation as cr
 from stats import general as gn
+from stats import welch as w
 import scipy.stats as sc
 import pandas as pd
 import numpy as np
 import krippendorff as k
+import plotly.graph_objects as go
 
 transpose = 0
 
@@ -42,7 +44,7 @@ lossPANAS = cr.loss_calc(corrPANAS[1], corrPANAS[0])
 
 print("\n#Correlations calculated with the following data losses:")
 print(" GEW: loss of " +
-      str(lossGEW[0]) + " datapoints out of " + str(lossGEW[1]) +", corresponding to " + str(lossGEW[2]) + " %")
+      str(lossGEW[0]) + " datapoints out of " + str(lossGEW[1]) + ", corresponding to " + str(lossGEW[2]) + " %")
 print(" PANAS: loss of " +
       str(lossPANAS[0]) + " datapoints out of " + str(lossPANAS[1]) + ", corresponding to " + str(lossPANAS[2]) + "%")
 corrGEW = corrGEW[0]
@@ -50,8 +52,9 @@ corrPANAS = corrPANAS[0]
 corrGEW_n = len(corrGEW)
 corrPANAS_n = len(corrPANAS)
 
+
 print("\n#Independent T test of GEW correlations against PANAS:\n   " +
-      str(sc.ttest_ind(corrGEW, corrPANAS, equal_var=sc.tvar(corrGEW) == sc.tvar(corrPANAS), trim=0.2)))
+      str(w.welch_ttest(corrGEW, corrPANAS)))
 
 stdGEW = float(np.nanstd(corrGEW, ddof=1))
 stdPANAS = float(np.nanstd(corrPANAS, ddof=1))
@@ -65,22 +68,26 @@ print("\n#Standard errors for: ")
 print(" GEW correlations: " + str(semGEW))
 print(" PANAS correlations: " + str(semPANAS))
 
+avgGEW = cr.get_weighted_average_corr(corrGEW)
+avgPANAS = cr.get_weighted_average_corr(corrPANAS)
+
 intervalGEW = sc.t.interval(
-    alpha=0.95, df=corrGEW_n-1, loc=np.mean(corrGEW.apply(cr.inf_to_real)), scale=semGEW)
+    alpha=0.95, df=corrGEW_n-1, loc=avgGEW, scale=semGEW)
 intervalPANAS = sc.t.interval(
-    alpha=0.95, df=corrPANAS_n-1, loc=np.mean(corrPANAS.apply(cr.inf_to_real)), scale=semPANAS)
+    alpha=0.95, df=corrPANAS_n-1, loc=avgPANAS, scale=semPANAS)
 
-avgGEW = cr.get_average_corr(corrGEW)
-avgPANAS = cr.get_average_corr(corrPANAS)
-
-print("\n#Average correlation for:")
-print(" GEW results: " + str(avgGEW.real + avgPANAS.imag) +
+print("\n#Average Fisher-Z transformed correlation for:")
+print(" GEW results: " + str(avgGEW) +
       ", confidence interval: " + str(intervalGEW))
-print(" PANAS results: " + str(avgPANAS.real + avgPANAS.imag) +
+print(" PANAS results: " + str(avgPANAS) +
       ", confidence interval: " + str(intervalPANAS))
 
+print("\n#Fisher-Z back-transformed Average correlation for:")
+print(" GEW results: " + str(np.tanh(avgGEW)))
+print(" PANAS results: " + str(np.tanh(avgPANAS)))
+
 cocorr = cr.independent_correlation_test(
-    corrGEW.mean(), corrPANAS.mean(), corrGEW_n, corrPANAS_n)
+    avgGEW, avgPANAS, corrGEW_n, corrPANAS_n)
 
 print("\nSignificance test on the average correlations for GEW and PANAS:")
 print(" t-statistic: " + str(cocorr) +
@@ -93,3 +100,15 @@ print(" t-statistic: " + str(cocorr) +
 
 # GEWsub.to_excel("gwsub.xlsx")
 # PANASsub.to_excel("panassub.xlsx")
+
+
+fig = go.Figure(data=[
+      go.Bar(name='method',
+      x=["GEW", "PANAS"],
+      y=[avgGEW, avgPANAS],
+      error_y=dict(type='data', array=[semGEW, semPANAS])
+      )
+])
+fig.update_yaxes(range=[0, 1])
+# fig.update_layout(barmode='group')
+fig.show()

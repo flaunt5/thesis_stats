@@ -37,11 +37,16 @@ def get_data_categories(dataset):
     return {"AR": ar, "MT": mt, "GI": gi}
 
 
+# general_data = get_data()
 # per_method = duration_mean_spearman(general_data, "method")
+# print(per_method)
 # general_cat = get_data_categories(general_data)
+# print(general_cat)
 
 # gew_data = general_data[general_data["method"] == "GEW"]
 # gew_cat = get_data_categories(gew_data)
+# print(gew_cat)
 
 # panas_data = general_data[general_data["method"] == "PANAS"]
 # panas_cat = get_data_categories(panas_data)
+# print(panas_cat)
