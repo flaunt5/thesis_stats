@@ -45,6 +45,14 @@ def get_correlation(first_data: pd.DataFrame, second_data: pd.DataFrame, axis=0,
 def get_average_corr(corrdf: pd.DataFrame) -> complex:
     return np.tanh(corrdf.mean())
 
+
+def get_weighted_average_corr(corrdf: pd.DataFrame) -> complex:
+    df = corrdf.value_counts().rename_axis(
+        'unique_values').reset_index(name='counts')
+    weights = df['counts']
+    vals = df['unique_values']
+    return (vals * weights).sum() / weights.sum()
+
 def inf_to_real(num: complex) -> float:
     return float(num.real + num.imag)
 
