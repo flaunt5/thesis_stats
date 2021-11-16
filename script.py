@@ -1,15 +1,83 @@
 from tools import data
+from tools import demographic_data
 from stats import cronbach_alpha as ca
 from stats import correlation as cr
-from stats import general as gn
 from stats import welch as w
 import scipy.stats as sc
 import pandas as pd
 import numpy as np
-import krippendorff as k
 import plotly.graph_objects as go
 
+pd.options.plotting.backend = "plotly"
+
 transpose = 0
+
+dem = demographic_data.get_demographic_data(
+    "first_results/results.csv", "second_results/GEW_resu2.csv", "second_results/PANAS_resu2.csv")
+demGEW = dem[dem["Method"] == "GEW"]
+demPANAS = dem[dem["Method"] == "PANAS"]
+
+
+def dem_dataframe(column, name):
+    return pd.concat(
+        [demGEW[column].value_counts().append(
+            pd.Series(demGEW[column].value_counts().sum(), index=["Total"])),
+         demPANAS[column].value_counts().append(
+            pd.Series(demPANAS[column].value_counts().sum(), index=["Total"])),
+         dem[column].value_counts().append(
+            pd.Series(dem[column].value_counts().sum(), index=["Total"]))],
+        axis=1).fillna(0).sort_index().reset_index().rename(columns={"index": name, 0: "GEW", 1: "PANAS", 2: "Combined"}).set_index(name)
+
+
+df_ar = dem_dataframe("AR", "Age Range")
+df_mt = dem_dataframe("MT", "English as Mother Tongue").reindex(
+    ["Yes", "No", "Prefer not to say"])
+df_gi = dem_dataframe("GI", "Gender Identity")
+df_duration = pd.DataFrame([("First", demGEW["Duration (first)"].mean(),
+                            demPANAS["Duration (first)"].mean(),
+                            dem["Duration (first)"].mean()),
+                           ("Second", demGEW["Duration (second)"].mean(),
+                            demPANAS["Duration (second)"].mean(),
+                           dem["Duration (second)"].mean())],
+                           columns=["Survey Round", "GEW", "PANAS", "Combined"])
+
+print("\n# Shapiro Wilk test on time taken on the first surveys\n    ",
+      sc.shapiro(dem["Duration (first)"]))
+print("\n# Shapiro Wilk test on time taken on the second surveys\n    ",
+      sc.shapiro(dem["Duration (second)"]))
+
+demM = dem["Method"].apply(
+    lambda x: True if x == "GEW" else False)
+mw1 = sc.mannwhitneyu(
+    demGEW["Duration (first)"], demPANAS["Duration (first)"])
+pbs1 = sc.pointbiserialr(demM, dem["Duration (first)"])
+mw2 = sc.mannwhitneyu(
+    demGEW["Duration (second)"], demPANAS["Duration (second)"])
+pbs2 = sc.pointbiserialr(demM, dem["Duration (second)"])
+
+df_mannwhit_pbs = pd.DataFrame([("First", mw1.statistic, mw1.pvalue, pbs1.correlation, pbs1.pvalue), ("Second", mw2.statistic, mw2.pvalue, pbs2.correlation, pbs2.pvalue)],
+                               columns=["Test Round", "MW Statistic", "MW P-value", "PB Correlation", "PB P-value"])
+
+
+print("\n# Mann Whitney test comparing medians of time taken for the the first and second rounds of surveys:\n    ",
+      sc.mannwhitneyu(dem["Duration (first)"], dem["Duration (second)"]))
+
+ar_k1 = sc.kruskal(*[group["Duration (first)"].values for name,
+                   group in dem[["AR", "Duration (first)"]].groupby("AR")])
+mt_k1 = sc.kruskal(*[group["Duration (first)"].values for name,
+                   group in dem[["MT", "Duration (first)"]].groupby("MT")])
+gi_k1 = sc.kruskal(*[group["Duration (first)"].values for name,
+                   group in dem[["GI", "Duration (first)"]].groupby("GI")])
+
+ar_k2 = sc.kruskal(*[group["Duration (second)"].values for name,
+                   group in dem[["AR", "Duration (second)"]].groupby("AR")])
+mt_k2 = sc.kruskal(*[group["Duration (second)"].values for name,
+                   group in dem[["MT", "Duration (second)"]].groupby("MT")])
+gi_k2 = sc.kruskal(*[group["Duration (second)"].values for name,
+                   group in dem[["GI", "Duration (second)"]].groupby("GI")])
+
+df_kruskal = pd.DataFrame([("First", ar_k1.pvalue, mt_k1.pvalue, gi_k1.pvalue), ("Second", ar_k2.pvalue, mt_k2.pvalue, gi_k2.pvalue)],
+                          columns=["Test Round", "Age Range", "English as Mother Tongue", "Gender Identity"])
 
 # Fetches the data from the first and second surveys as a data object
 FirstData = data.FirstData("first_results/results.csv")
@@ -20,87 +88,61 @@ numData = data.get_num_data_per_method(FirstData, SecondData)
 numDataGEW = numData['GEW']
 numDataPANAS = numData['PANAS']
 
-print("#N population size for: ")
-print(" GEW survey: " + str(len(numData['GEW'][0])))
-print(" PANAS survey: " + str(len(numData['PANAS'][0])))
-
-print("\n#Cronbach's Alpha for...")
-print(" First GEW survey results: " + str(ca.cronbach_alpha(numDataGEW[0])))
-print(" Second GEW survey results: " + str(ca.cronbach_alpha(numDataGEW[1])))
-print(" First PANAS survey results: " +
-      str(ca.cronbach_alpha(numDataPANAS[0])))
-print(" Second GEW survey results: " + str(ca.cronbach_alpha(numDataPANAS[1])))
-
-print("\n#Krippendorff's Alpha for...")
-print(" First GEW survey results: " + str(k.alpha(numDataGEW[0])))
-print(" Second GEW survey results: " + str(k.alpha(numDataGEW[1])))
-print(" First PANAS survey results: " + str(k.alpha(numDataPANAS[0])))
-print(" Second GEW survey results: " + str(k.alpha(numDataPANAS[1])))
+df_cronbach = pd.DataFrame([("First", str(ca.cronbach_alpha(
+    numDataGEW[0])), str(ca.cronbach_alpha(numDataPANAS[0]))), ("Second", ca.cronbach_alpha(numDataGEW[1]), ca.cronbach_alpha(numDataPANAS[1]))],
+    columns=["Survey round", "GEW", "PANAS"])
 
 corrGEW = cr.get_correlation(numDataGEW[0], numDataGEW[1], transpose)
 corrPANAS = cr.get_correlation(numDataPANAS[0], numDataPANAS[1], transpose)
 lossGEW = cr.loss_calc(corrGEW[1], corrGEW[0])
 lossPANAS = cr.loss_calc(corrPANAS[1], corrPANAS[0])
 
-print("\n#Correlations calculated with the following data losses:")
-print(" GEW: loss of " +
+print("\n# Correlations calculated with the following data losses:")
+print("     GEW: loss of " +
       str(lossGEW[0]) + " datapoints out of " + str(lossGEW[1]) + ", corresponding to " + str(lossGEW[2]) + " %")
-print(" PANAS: loss of " +
+print("     PANAS: loss of " +
       str(lossPANAS[0]) + " datapoints out of " + str(lossPANAS[1]) + ", corresponding to " + str(lossPANAS[2]) + "%")
 corrGEW = corrGEW[0]
 corrPANAS = corrPANAS[0]
 corrGEW_n = len(corrGEW)
 corrPANAS_n = len(corrPANAS)
 
-
-print("\n#Independent T test of GEW correlations against PANAS:\n   " +
-      str(w.welch_ttest(corrGEW, corrPANAS)))
-
-stdGEW = float(np.nanstd(corrGEW, ddof=1))
-stdPANAS = float(np.nanstd(corrPANAS, ddof=1))
-print("\n#Standard deviations for: ")
-print(" GEW correlations: " + str(stdGEW))
-print(" PANAS correlations: " + str(stdPANAS))
-
-semGEW = float(sc.sem(corrGEW, nan_policy='omit'))
-semPANAS = float(sc.sem(corrPANAS, nan_policy='omit'))
-print("\n#Standard errors for: ")
-print(" GEW correlations: " + str(semGEW))
-print(" PANAS correlations: " + str(semPANAS))
+df_ttest = w.welch_ttest(corrGEW, corrPANAS)
 
 avgGEW = cr.get_weighted_average_corr(corrGEW)
 avgPANAS = cr.get_weighted_average_corr(corrPANAS)
+stdGEW = float(np.nanstd(corrGEW, ddof=1))
+stdPANAS = float(np.nanstd(corrPANAS, ddof=1))
+semGEW = float(sc.sem(corrGEW, nan_policy='omit'))
+semPANAS=float(sc.sem(corrPANAS, nan_policy='omit'))
 
-intervalGEW = sc.t.interval(
-    alpha=0.95, df=corrGEW_n-1, loc=avgGEW, scale=semGEW)
-intervalPANAS = sc.t.interval(
-    alpha=0.95, df=corrPANAS_n-1, loc=avgPANAS, scale=semPANAS)
-
-print("\n#Average Fisher-Z transformed correlation for:")
-print(" GEW results: " + str(avgGEW) +
-      ", confidence interval: " + str(intervalGEW))
-print(" PANAS results: " + str(avgPANAS) +
-      ", confidence interval: " + str(intervalPANAS))
-
-print("\n#Fisher-Z back-transformed Average correlation for:")
-print(" GEW results: " + str(np.tanh(avgGEW)))
-print(" PANAS results: " + str(np.tanh(avgPANAS)))
+df_corr = pd.DataFrame([("Weighted Average of Correlations (Fisher-Z transformed)", avgGEW, avgPANAS),
+                        ("Standard Deviation", stdGEW, stdPANAS),
+                        ("Standard Error", semGEW, semPANAS),
+                        ("Weighted Average (back-transformed)", np.tanh(avgGEW), np.tanh(avgPANAS))],
+                       columns = ["Measure", "GEW", "PANAS"])
 
 cocorr = cr.independent_correlation_test(
     avgGEW, avgPANAS, corrGEW_n, corrPANAS_n)
 
-print("\nSignificance test on the average correlations for GEW and PANAS:")
-print(" t-statistic: " + str(cocorr) +
-      " p-value: " + str(sc.norm.sf(abs(cocorr))*2))
+print("\n# Significance test on the average correlations for GEW and PANAS:")
+print("     t-statistic: ", str(cocorr),
+      "\n   p-value: ", str(sc.norm.sf(abs(cocorr))*2))
+
+with pd.ExcelWriter("graphs/demographics.xlsx") as writerD:
+      df_ar.to_excel(writerD, sheet_name="Age Range")
+      df_mt.to_excel(writerD, sheet_name="Mother Tongue")
+      df_gi.to_excel(writerD, sheet_name="Gender Identity")
 
 
-# previously used to visualize answers in an excel sheet
-# GEWsub = secondNumGEW.sub(firstNumGEW)
-# PANASsub = secondNumPANAS.sub(firstNumPANAS)
-
-# GEWsub.to_excel("gwsub.xlsx")
-# PANASsub.to_excel("panassub.xlsx")
-
+with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
+    df_duration.to_excel(writerS, sheet_name="Duration")
+    df_cronbach.to_excel(writerS, sheet_name="Cronbach")
+    df_mannwhit_pbs.to_excel(writerS, sheet_name="MannWhit PBS")
+    df_kruskal.to_excel(writerS, sheet_name="Kruskal")
+    df_ttest.to_excel(writerS, sheet_name="T-test")
+    df_corr.to_excel(writerS, sheet_name="Corr")
+    
 
 fig = go.Figure(data=[
       go.Bar(name='method',
@@ -110,5 +152,5 @@ fig = go.Figure(data=[
       )
 ])
 fig.update_yaxes(range=[0, 1])
-# fig.update_layout(barmode='group')
-fig.show()
+fig.update_layout(barmode='group')
+fig.write_image("graphs/averages.jpg")

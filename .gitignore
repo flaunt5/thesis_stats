@@ -127,3 +127,6 @@ dmypy.json
 *.csv
 !.gitkeep
 *.xlsx
+*.txt
+!requirements.txt
+*.jpg
