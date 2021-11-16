@@ -7,6 +7,7 @@ import scipy.stats as sc
 import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
+import plotly.express as px
 
 pd.options.plotting.backend = "plotly"
 
@@ -39,7 +40,7 @@ df_duration = pd.DataFrame([("First", demGEW["Duration (first)"].mean(),
                            ("Second", demGEW["Duration (second)"].mean(),
                             demPANAS["Duration (second)"].mean(),
                            dem["Duration (second)"].mean())],
-                           columns=["Survey Round", "GEW", "PANAS", "Combined"])
+                           columns=["Survey Round", "GEW", "PANAS", "Combined"]).set_index("Survey Round")
 
 print("\n# Shapiro Wilk test on time taken on the first surveys\n    ",
       sc.shapiro(dem["Duration (first)"]))
@@ -56,7 +57,7 @@ mw2 = sc.mannwhitneyu(
 pbs2 = sc.pointbiserialr(demM, dem["Duration (second)"])
 
 df_mannwhit_pbs = pd.DataFrame([("First", mw1.statistic, mw1.pvalue, pbs1.correlation, pbs1.pvalue), ("Second", mw2.statistic, mw2.pvalue, pbs2.correlation, pbs2.pvalue)],
-                               columns=["Test Round", "MW Statistic", "MW P-value", "PB Correlation", "PB P-value"])
+                               columns=["Survey Round", "MW Statistic", "MW P-value", "PB Correlation", "PB P-value"]).set_index("Survey Round")
 
 
 print("\n# Mann Whitney test comparing medians of time taken for the the first and second rounds of surveys:\n    ",
@@ -77,7 +78,7 @@ gi_k2 = sc.kruskal(*[group["Duration (second)"].values for name,
                    group in dem[["GI", "Duration (second)"]].groupby("GI")])
 
 df_kruskal = pd.DataFrame([("First", ar_k1.pvalue, mt_k1.pvalue, gi_k1.pvalue), ("Second", ar_k2.pvalue, mt_k2.pvalue, gi_k2.pvalue)],
-                          columns=["Test Round", "Age Range", "English as Mother Tongue", "Gender Identity"])
+                          columns=["Survey Round", "Age Range", "English as Mother Tongue", "Gender Identity"]).set_index("Survey Round")
 
 # Fetches the data from the first and second surveys as a data object
 FirstData = data.FirstData("first_results/results.csv")
@@ -90,7 +91,7 @@ numDataPANAS = numData['PANAS']
 
 df_cronbach = pd.DataFrame([("First", str(ca.cronbach_alpha(
     numDataGEW[0])), str(ca.cronbach_alpha(numDataPANAS[0]))), ("Second", ca.cronbach_alpha(numDataGEW[1]), ca.cronbach_alpha(numDataPANAS[1]))],
-    columns=["Survey round", "GEW", "PANAS"])
+    columns=["Survey Round", "GEW", "PANAS"]).set_index("Survey Round")
 
 corrGEW = cr.get_correlation(numDataGEW[0], numDataGEW[1], transpose)
 corrPANAS = cr.get_correlation(numDataPANAS[0], numDataPANAS[1], transpose)
@@ -120,7 +121,7 @@ df_corr = pd.DataFrame([("Weighted Average of Correlations (Fisher-Z transformed
                         ("Standard Deviation", stdGEW, stdPANAS),
                         ("Standard Error", semGEW, semPANAS),
                         ("Weighted Average (back-transformed)", np.tanh(avgGEW), np.tanh(avgPANAS))],
-                       columns = ["Measure", "GEW", "PANAS"])
+                       columns = ["Measure", "GEW", "PANAS"]).set_index("Measure")
 
 cocorr = cr.independent_correlation_test(
     avgGEW, avgPANAS, corrGEW_n, corrPANAS_n)
@@ -129,28 +130,36 @@ print("\n# Significance test on the average correlations for GEW and PANAS:")
 print("     t-statistic: ", str(cocorr),
       "\n   p-value: ", str(sc.norm.sf(abs(cocorr))*2))
 
-with pd.ExcelWriter("graphs/demographics.xlsx") as writerD:
-      df_ar.to_excel(writerD, sheet_name="Age Range")
-      df_mt.to_excel(writerD, sheet_name="Mother Tongue")
-      df_gi.to_excel(writerD, sheet_name="Gender Identity")
+# with pd.ExcelWriter("graphs/demographics.xlsx") as writerD:
+#       df_ar.to_excel(writerD, sheet_name="Age Range")
+#       df_mt.to_excel(writerD, sheet_name="Mother Tongue")
+#       df_gi.to_excel(writerD, sheet_name="Gender Identity")
 
 
-with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
-    df_duration.to_excel(writerS, sheet_name="Duration")
-    df_cronbach.to_excel(writerS, sheet_name="Cronbach")
-    df_mannwhit_pbs.to_excel(writerS, sheet_name="MannWhit PBS")
-    df_kruskal.to_excel(writerS, sheet_name="Kruskal")
-    df_ttest.to_excel(writerS, sheet_name="T-test")
-    df_corr.to_excel(writerS, sheet_name="Corr")
+# with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
+#     df_duration.to_excel(writerS, sheet_name="Duration")
+#     df_cronbach.to_excel(writerS, sheet_name="Cronbach")
+#     df_mannwhit_pbs.to_excel(writerS, sheet_name="MannWhit PBS")
+#     df_kruskal.to_excel(writerS, sheet_name="Kruskal")
+#     df_ttest.to_excel(writerS, sheet_name="T-test")
+#     df_corr.to_excel(writerS, sheet_name="Corr")
     
 
-fig = go.Figure(data=[
-      go.Bar(name='method',
-      x=["GEW", "PANAS"],
-      y=[avgGEW, avgPANAS],
-      error_y=dict(type='data', array=[semGEW, semPANAS])
-      )
+# fig = go.Figure(data=[
+#       go.Bar(name='method',
+#       x=["GEW", "PANAS"],
+#       y=[avgGEW, avgPANAS],
+#       error_y=dict(type='data', array=[semGEW, semPANAS])
+#       )
+# ])
+# fig.update_yaxes(range=[0, 1])
+# fig.update_layout(barmode='group')
+# fig.write_image("graphs/averages.jpg")
+test = go.Figure(data=[
+      go.Bar(name="First", x=df_duration.columns.values, y=df_duration.loc["First", :].values,
+             error_y=dict(type='data', array=[sc.sem(demGEW['Duration (first)']), sc.sem(demPANAS['Duration (first)']), sc.sem(dem['Duration (first)'])])),
+      go.Bar(name="Second", x=df_duration.columns.values, y=df_duration.loc["Second", :].values,
+             error_y=dict(type='data', array=[sc.sem(demGEW['Duration (second)']), sc.sem(demPANAS['Duration (second)']), sc.sem(dem['Duration (second)'])]))
 ])
-fig.update_yaxes(range=[0, 1])
-fig.update_layout(barmode='group')
-fig.write_image("graphs/averages.jpg")
+test.update_layout(barmode='group')
+test.show()
