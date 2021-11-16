@@ -8,6 +8,7 @@ import pandas as pd
 import numpy as np
 import plotly.graph_objects as go
 import plotly.express as px
+import plotly.figure_factory as ff
 
 pd.options.plotting.backend = "plotly"
 
@@ -105,24 +106,30 @@ print("     PANAS: loss of " +
       str(lossPANAS[0]) + " datapoints out of " + str(lossPANAS[1]) + ", corresponding to " + str(lossPANAS[2]) + "%")
 corrGEW = corrGEW[0]
 corrPANAS = corrPANAS[0]
+
+print("# Shapiro Wilk test of normality for the Fisher-Z transformed GEW correlations:\n  ", sc.shapiro(corrGEW))
+print("# Shapiro Wilk test of normality for the Fisher-Z transformed PANAS correlations:\n  ",
+      sc.shapiro(corrPANAS))
+print("# Mann Whitney U test of similarity of the media of the Fisher-Z transformed GEW and PANAS correlations:\n   ",
+      sc.mannwhitneyu(corrGEW, corrPANAS))
+
+
 corrGEW_n = len(corrGEW)
 corrPANAS_n = len(corrPANAS)
 
 df_ttest = w.welch_ttest(corrGEW, corrPANAS)
-
 avgGEW = cr.get_weighted_average_corr(corrGEW)
 avgPANAS = cr.get_weighted_average_corr(corrPANAS)
 stdGEW = float(np.nanstd(corrGEW, ddof=1))
 stdPANAS = float(np.nanstd(corrPANAS, ddof=1))
 semGEW = float(sc.sem(corrGEW, nan_policy='omit'))
-semPANAS=float(sc.sem(corrPANAS, nan_policy='omit'))
+semPANAS = float(sc.sem(corrPANAS, nan_policy='omit'))
 
 df_corr = pd.DataFrame([("Weighted Average of Correlations (Fisher-Z transformed)", avgGEW, avgPANAS),
                         ("Standard Deviation", stdGEW, stdPANAS),
                         ("Standard Error", semGEW, semPANAS),
                         ("Weighted Average (back-transformed)", np.tanh(avgGEW), np.tanh(avgPANAS))],
-                       columns = ["Measure", "GEW", "PANAS"]).set_index("Measure")
-
+                       columns=["Measure", "GEW", "PANAS"]).set_index("Measure")
 cocorr = cr.independent_correlation_test(
     avgGEW, avgPANAS, corrGEW_n, corrPANAS_n)
 
@@ -130,31 +137,25 @@ print("\n# Significance test on the average correlations for GEW and PANAS:")
 print("     t-statistic: ", str(cocorr),
       "\n   p-value: ", str(sc.norm.sf(abs(cocorr))*2))
 
-# with pd.ExcelWriter("graphs/demographics.xlsx") as writerD:
-#       df_ar.to_excel(writerD, sheet_name="Age Range")
-#       df_mt.to_excel(writerD, sheet_name="Mother Tongue")
-#       df_gi.to_excel(writerD, sheet_name="Gender Identity")
+
+with pd.ExcelWriter("graphs/demographics.xlsx") as writerD:
+    df_ar.to_excel(writerD, sheet_name="Age Range")
+    df_mt.to_excel(writerD, sheet_name="Mother Tongue")
+    df_gi.to_excel(writerD, sheet_name="Gender Identity")
 
 
-# with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
-#     df_duration.to_excel(writerS, sheet_name="Duration")
-#     df_cronbach.to_excel(writerS, sheet_name="Cronbach")
-#     df_mannwhit_pbs.to_excel(writerS, sheet_name="MannWhit PBS")
-#     df_kruskal.to_excel(writerS, sheet_name="Kruskal")
-#     df_ttest.to_excel(writerS, sheet_name="T-test")
-#     df_corr.to_excel(writerS, sheet_name="Corr")
-    
+with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
+    df_duration.to_excel(writerS, sheet_name="Duration")
+    df_cronbach.to_excel(writerS, sheet_name="Cronbach")
+    df_mannwhit_pbs.to_excel(writerS, sheet_name="MannWhit PBS")
+    df_kruskal.to_excel(writerS, sheet_name="Kruskal")
+    df_ttest.to_excel(writerS, sheet_name="T-test")
+    df_corr.to_excel(writerS, sheet_name="Corr")
 
-# fig = go.Figure(data=[
-#       go.Bar(name='method',
-#       x=["GEW", "PANAS"],
-#       y=[avgGEW, avgPANAS],
-#       error_y=dict(type='data', array=[semGEW, semPANAS])
-#       )
-# ])
-# fig.update_yaxes(range=[0, 1])
-# fig.update_layout(barmode='group')
-# fig.write_image("graphs/averages.jpg")
+fig = ff.create_distplot([corrGEW.values, corrPANAS.values], [
+                         'GEW', "PANAS"], bin_size=.2)
+fig.write_image("graphs/corr_distplot.jpg")
+
 test = go.Figure(data=[
       go.Bar(name="First", x=df_duration.columns.values, y=df_duration.loc["First", :].values,
              error_y=dict(type='data', array=[sc.sem(demGEW['Duration (first)']), sc.sem(demPANAS['Duration (first)']), sc.sem(dem['Duration (first)'])])),
@@ -162,4 +163,4 @@ test = go.Figure(data=[
              error_y=dict(type='data', array=[sc.sem(demGEW['Duration (second)']), sc.sem(demPANAS['Duration (second)']), sc.sem(dem['Duration (second)'])]))
 ])
 test.update_layout(barmode='group')
-test.show()
+test.write_image("graphs/duration_mean_bars.jpg")
