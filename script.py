@@ -17,6 +17,7 @@ transpose = 0
 dem = demographic_data.get_demographic_data(
     "first_results/results.csv", "second_results/GEW_resu2.csv", "second_results/PANAS_resu2.csv")
 dem = dem[dem["Duration (first)"] < 10000]
+dem = dem[dem["Duration (second)"] < 10000]
 demGEW = dem[dem["Method"] == "GEW"]
 demPANAS = dem[dem["Method"] == "PANAS"]
 
@@ -154,14 +155,26 @@ with pd.ExcelWriter("graphs/stats.xlsx") as writerS:
     df_corr.to_excel(writerS, sheet_name="Corr")
 
 fig = ff.create_distplot([corrGEW.values, corrPANAS.values], [
-                         'GEW', "PANAS"], bin_size=.2)
+                         'GEW', "PANAS"], bin_size=.1, show_rug=False)
+fig.update_layout(
+    title_text="Distribution plot for Fisher-Z transformed Correlation Coefficients")
 fig.write_image("graphs/corr_distplot.jpg")
 
-test = go.Figure(data=[
-      go.Bar(name="First", x=df_duration.columns.values, y=df_duration.loc["First", :].values,
-             error_y=dict(type='data', array=[sc.sem(demGEW['Duration (first)']), sc.sem(demPANAS['Duration (first)']), sc.sem(dem['Duration (first)'])])),
-      go.Bar(name="Second", x=df_duration.columns.values, y=df_duration.loc["Second", :].values,
-             error_y=dict(type='data', array=[sc.sem(demGEW['Duration (second)']), sc.sem(demPANAS['Duration (second)']), sc.sem(dem['Duration (second)'])]))
+corr_bar = go.Figure(data=[
+    go.Bar(name="GEW", x=["Average Correlation Coefficient"], y=[avgGEW],
+           error_y=dict(type='data', array=[semGEW])),
+    go.Bar(name="PANAS", x=["Average Correlation Coefficient"], y=[avgPANAS],
+           error_y=dict(type='data', array=[semPANAS]))
 ])
-test.update_layout(barmode='group')
+corr_bar.update_layout(
+    yaxis={"title": "Fisher-Z Transformed Correlation Score", "range": [0, 1]})
+corr_bar.write_image("graphs/corr_mean_bars.jpg")
+
+test = go.Figure(data=[
+    go.Bar(name="First", x=df_duration.columns.values, y=df_duration.loc["First", :].values,
+           error_y=dict(type='data', array=[sc.sem(demGEW['Duration (first)']), sc.sem(demPANAS['Duration (first)']), sc.sem(dem['Duration (first)'])])),
+    go.Bar(name="Second", x=df_duration.columns.values, y=df_duration.loc["Second", :].values,
+           error_y=dict(type='data', array=[sc.sem(demGEW['Duration (second)']), sc.sem(demPANAS['Duration (second)']), sc.sem(dem['Duration (second)'])]))
+])
+test.update_layout(barmode='group', yaxis_title="Time in seconds")
 test.write_image("graphs/duration_mean_bars.jpg")
