@@ -16,6 +16,7 @@ transpose = 0
 
 dem = demographic_data.get_demographic_data(
     "first_results/results.csv", "second_results/GEW_resu2.csv", "second_results/PANAS_resu2.csv")
+dem = dem[dem["Duration (first)"] < 10000]
 demGEW = dem[dem["Method"] == "GEW"]
 demPANAS = dem[dem["Method"] == "PANAS"]
 
@@ -51,17 +52,17 @@ print("\n# Shapiro Wilk test on time taken on the second surveys\n    ",
 demM = dem["Method"].apply(
     lambda x: True if x == "GEW" else False)
 mw1 = sc.mannwhitneyu(
-    demGEW["Duration (first)"], demPANAS["Duration (first)"])
+    demGEW["Duration (first)"], demPANAS["Duration (first)"], alternative="greater")
 pbs1 = sc.pointbiserialr(demM, dem["Duration (first)"])
 mw2 = sc.mannwhitneyu(
-    demGEW["Duration (second)"], demPANAS["Duration (second)"])
+    demGEW["Duration (second)"], demPANAS["Duration (second)"], alternative="greater")
 pbs2 = sc.pointbiserialr(demM, dem["Duration (second)"])
 
 df_mannwhit_pbs = pd.DataFrame([("First", mw1.statistic, mw1.pvalue, pbs1.correlation, pbs1.pvalue), ("Second", mw2.statistic, mw2.pvalue, pbs2.correlation, pbs2.pvalue)],
                                columns=["Survey Round", "MW Statistic", "MW P-value", "PB Correlation", "PB P-value"]).set_index("Survey Round")
 
 
-print("\n# Mann Whitney test comparing medians of time taken for the the first and second rounds of surveys:\n    ",
+print("\n# Mann Whitney test comparing time taken for the the first and second rounds of surveys:\n    ",
       sc.mannwhitneyu(dem["Duration (first)"], dem["Duration (second)"]))
 
 ar_k1 = sc.kruskal(*[group["Duration (first)"].values for name,
